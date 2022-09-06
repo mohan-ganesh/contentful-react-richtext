@@ -10,31 +10,49 @@ function renderOptions(links) {
   // create an asset map
   const assetMap = new Map();
   // loop through the assets and add them to the map
-  for (const asset of links.assets.block) {
-    assetMap.set(asset.sys.id, asset);
+  if (links.assets) {
+    for (const asset of links.assets.block) {
+      assetMap.set(asset.sys.id, asset);
+    }
   }
 
   // create an entry map
   const entryMap = new Map();
   // loop through the block linked entries and add them to the map
-  for (const entry of links.entries.block) {
-    entryMap.set(entry.sys.id, entry);
+  if (links.entries.block) {
+    for (const entry of links.entries.block) {
+      entryMap.set(entry.sys.id, entry);
+    }
   }
 
   // loop through the inline linked entries and add them to the map
-  for (const entry of links.entries.inline) {
-    entryMap.set(entry.sys.id, entry);
+  if (links.entries) {
+    for (const entry of links.entries.inline) {
+      console.log(entry.sys.id + " ---- " + entry);
+      entryMap.set(entry.sys.id, entry);
+    }
   }
 
   return {
     renderNode: {
       [INLINES.EMBEDDED_ENTRY]: (node, children) => {
         // find the entry in the entryMap by ID
+        console.log("empbedded-entry-inline" + node.data.target.sys.id);
         const entry = entryMap.get(node.data.target.sys.id);
 
         // render the entries as needed
         if (entry.__typename === "BlogPost") {
           return <a href={`/blog/${entry.slug}`}>{entry.title}</a>;
+        }
+
+        if (entry.__typename === "AnchorLink") {
+          console.log("in the matching block");
+          console.log(entry);
+          return (
+            <a className={`${entry.styleId}`} href={`${entry.target}`}>
+              {entry.title}
+            </a>
+          );
         }
       },
       [BLOCKS.EMBEDDED_ENTRY]: (node, children) => {
@@ -42,7 +60,7 @@ function renderOptions(links) {
         const entry = entryMap.get(node.data.target.sys.id);
 
         // render the entries as needed
-        if (entry.__typename === "CodeBlock") {
+        if (entry.__typename === "AnchorLink") {
           return (
             <pre>
               <code>{entry.code}</code>
@@ -96,13 +114,14 @@ export default function GraphQL(props) {
 
         <link rel="icon" href="/favicon.ico" />
       </Head>
-
-      <main>
-        {documentToReactComponents(
-          post.body.json,
-          renderOptions(post.body.links)
-        )}
-      </main>
+      <span className="css-z3pjzp">
+        <main>
+          {documentToReactComponents(
+            post.richtext.json,
+            renderOptions(post.richtext.links)
+          )}
+        </main>
+      </span>
     </>
   );
 }
@@ -122,36 +141,13 @@ export default function GraphQL(props) {
 
 export async function getStaticProps() {
   const query = `{
-    blogPostCollection(limit: 1, where: {slug: "the-power-of-the-contentful-rich-text-field"}) {
+    awesomeBlogCollection(limit: 2) {
       items {
         sys {
           id
         }
-        date
         title
-        slug
-        excerpt
-        tags
-        externalUrl
-        author {
-          name
-          description
-          gitHubUsername
-          twitchUsername
-          twitterUsername
-          websiteUrl
-          image {
-            sys {
-              id
-            }
-            url
-            title
-            width
-            height
-            description
-          }
-        }
-        body {
+        richtext {
           json
           links {
             entries {
@@ -160,37 +156,15 @@ export async function getStaticProps() {
                   id
                 }
                 __typename
-                ... on BlogPost {
+                ... on AnchorLink {
+                  linkName
                   title
-                  slug
+                  target
+                  styleId
+                  sys {
+                    id
+                  }
                 }
-              }
-              block {
-                sys {
-                  id
-                }
-                __typename
-                ... on CodeBlock {
-                  description
-                  language
-                  code
-                }
-                ... on VideoEmbed {
-                  embedUrl
-                  title
-                }
-              }
-            }
-            assets {
-              block {
-                sys {
-                  id
-                }
-                url
-                title
-                width
-                height
-                description
               }
             }
           }
@@ -217,10 +191,8 @@ export async function getStaticProps() {
     response.json()
   );
 
-  console.log("-----pop data-----");
-  console.log(response.data.blogPostCollection.items);
-  const post = response.data.blogPostCollection.items
-    ? response.data.blogPostCollection.items
+  const post = response.data.awesomeBlogCollection.items
+    ? response.data.awesomeBlogCollection.items
     : [];
 
   return {
