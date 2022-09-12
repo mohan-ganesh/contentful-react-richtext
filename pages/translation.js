@@ -7,6 +7,7 @@ import { BLOCKS, INLINES } from "@contentful/rich-text-types";
 // and BLOCKS.EMBEDDED_ASSET (linked assets e.g. images)
 
 function renderOptions(links) {
+  console.log(JSON.stringify(links));
   // create an asset map
   const assetMap = new Map();
   // loop through the assets and add them to the map
@@ -106,11 +107,11 @@ function renderOptions(links) {
 
 export default function GraphQL(props) {
   const { post } = props;
-
+  console.log(JSON.stringify(post));
   return (
     <>
       <Head>
-        <title>{post.title} -Contentful GraphQL API Example</title>
+        <title>{post.title} - Contentful GraphQL API Example</title>
 
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -139,13 +140,13 @@ export default function GraphQL(props) {
  * The example below shows how to query body.links.entries and body.links.assets for this particular content model.
  */
 
-export async function getServerSideProps(ctx) {
-  const preview = ctx.query.preview;
+export async function getServerSideProps(context) {
+  const language = context.query.language;
 
-  const status = preview === "yes" ? true : false;
-  console.log("params---->" + status);
+  const locale = language === "kannada" ? "kn-IN" : "en-US";
+
   const query = `{
-    awesomeBlogCollection(limit: 2, preview: ${status}) {
+    awesomeBlogCollection(limit: 2,locale: \"${locale}\") {
       items {
         sys {
           id
@@ -178,19 +179,14 @@ export async function getServerSideProps(ctx) {
   }`;
 
   console.log(query);
-
   // Construct the fetch options
   const fetchUrl = `https://graphql.contentful.com/content/v1/spaces/${process.env.NEXT_PUBLIC_CONTENTFUL_SPACE_ID}`;
 
-  const token = status
-    ? process.env.NEXT_PUBLIC_CONTENTFUL_PREVIEW_TOKEN
-    : process.env.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN;
-
-  console.log(token);
   const fetchOptions = {
     method: "POST",
     headers: {
-      Authorization: "Bearer " + token,
+      Authorization:
+        "Bearer " + process.env.NEXT_PUBLIC_CONTENTFUL_ACCESS_TOKEN,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ query }),
@@ -204,7 +200,7 @@ export async function getServerSideProps(ctx) {
   const post = response.data.awesomeBlogCollection.items
     ? response.data.awesomeBlogCollection.items
     : [];
-
+  console.log(JSON.stringify(post));
   return {
     props: {
       post: post.pop(),
